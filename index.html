@@ -249,6 +249,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
+      gap: 8px;
     }
     .modal-header h2 {
       margin: 0;
@@ -283,6 +284,7 @@
       align-items:center;
       justify-content:center;
       background: #020617;
+      transition: transform 0.12s ease-out;
     }
     .chibi::before { display:none; }
 
@@ -307,8 +309,9 @@
     /* Combat scene */
     #combatScene {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: flex-end;
+      gap: 20px; /* closer together so they can collide */
       margin-bottom: 10px;
       padding: 10px;
       border-radius: 8px;
@@ -325,23 +328,44 @@
       color: #9ca3af;
     }
 
-    .attack-anim {
-      animation: attackBounce 0.25s ease-out;
+    /* Side-aware attack/hit animations */
+    .chibi[data-side="player"].attack-anim {
+      animation: playerAttack 0.28s ease-out;
     }
-    .hit-anim {
-      animation: hitShake 0.25s ease-out;
+    .chibi[data-side="enemy"].attack-anim {
+      animation: enemyAttack 0.28s ease-out;
     }
-    @keyframes attackBounce {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-      100% { transform: translateY(0); }
+    .chibi[data-side="player"].hit-anim {
+      animation: playerHit 0.28s ease-out;
     }
-    @keyframes hitShake {
-      0% { transform: translateX(0); filter:brightness(1); }
-      25% { transform: translateX(-3px); filter:brightness(1.3); }
-      50% { transform: translateX(3px); filter:brightness(1.1); }
-      75% { transform: translateX(-3px); filter:brightness(1.3); }
-      100% { transform: translateX(0); filter:brightness(1); }
+    .chibi[data-side="enemy"].hit-anim {
+      animation: enemyHit 0.28s ease-out;
+    }
+
+    /* Player lunges right; enemy lunges left. Gap is small so they touch/overlap. */
+    @keyframes playerAttack {
+      0%   { transform: translateX(0) translateY(0); }
+      35%  { transform: translateX(18px) translateY(-6px); }
+      65%  { transform: translateX(18px) translateY(-2px); }
+      100% { transform: translateX(0) translateY(0); }
+    }
+    @keyframes enemyAttack {
+      0%   { transform: translateX(0) translateY(0); }
+      35%  { transform: translateX(-18px) translateY(-6px); }
+      65%  { transform: translateX(-18px) translateY(-2px); }
+      100% { transform: translateX(0) translateY(0); }
+    }
+    @keyframes playerHit {
+      0%   { transform: translateX(0) translateY(0); filter:brightness(1); }
+      25%  { transform: translateX(6px) translateY(-3px); filter:brightness(1.3); }
+      60%  { transform: translateX(-4px) translateY(0);   filter:brightness(1.1); }
+      100% { transform: translateX(0) translateY(0);      filter:brightness(1); }
+    }
+    @keyframes enemyHit {
+      0%   { transform: translateX(0) translateY(0); filter:brightness(1); }
+      25%  { transform: translateX(-6px) translateY(-3px); filter:brightness(1.3); }
+      60%  { transform: translateX(4px) translateY(0);      filter:brightness(1.1); }
+      100% { transform: translateX(0) translateY(0);        filter:brightness(1); }
     }
 
     /* Character creation stat rows */
@@ -547,7 +571,10 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Summon Weapons</h2>
-        <button class="modal-close" id="rollSettingsClose">✕</button>
+        <div>
+          <button class="secondary" id="lootInfoBtn" title="Show loot drop chances">i</button>
+          <button class="modal-close" id="rollSettingsClose">✕</button>
+        </div>
       </div>
       <div>
         <label>
@@ -564,6 +591,12 @@
           <button class="secondary" id="maxRollBtn">Max Rolls</button>
           <button class="danger" id="resetGachaBtn">Reset Gacha Stats</button>
         </div>
+
+        <!-- Loot drop chances panel -->
+        <details id="lootTableContainer" style="margin-top:10px;">
+          <summary class="stat-label">Loot drop chances (per weapon)</summary>
+          <pre id="lootTable" style="margin-top:6px; max-height:220px;"></pre>
+        </details>
       </div>
     </div>
   </div>
@@ -668,7 +701,7 @@
     <div id="combatScene">
       <div id="playerSpriteWrapper">
         <div class="sprite-label">Hero</div>
-        <div id="playerSprite" class="chibi chibi-guy chibi-shadow">
+        <div id="playerSprite" class="chibi chibi-guy chibi-shadow" data-side="player">
           <svg class="chibi-svg">
             <use id="playerSpriteUse" href="#sprite-guy"></use>
           </svg>
@@ -676,7 +709,7 @@
       </div>
       <div id="enemySpriteWrapper">
         <div class="sprite-label">Enemy</div>
-        <div id="enemySprite" class="chibi chibi-shadow">
+        <div id="enemySprite" class="chibi chibi-shadow" data-side="enemy">
           <svg class="chibi-svg">
             <use id="enemySpriteUse" href="#sprite-enemy-normal"></use>
           </svg>
@@ -914,6 +947,10 @@
     const rollSettingsClose   = document.getElementById('rollSettingsClose');
     const pullsInput          = document.getElementById('pullsInput');
 
+    const lootTableContainer  = document.getElementById('lootTableContainer');
+    const lootTableEl         = document.getElementById('lootTable');
+    const lootInfoBtn         = document.getElementById('lootInfoBtn');
+
     const backpackModal       = document.getElementById('backpackModal');
     const backpackClose       = document.getElementById('backpackClose');
 
@@ -964,6 +1001,42 @@
       totalPullsEl.textContent = totalPulls;
       totalAncientEl.textContent = totalAncientHits;
       sinceAncientEl.textContent = pullsSinceLastAncient;
+    }
+
+    // --- LOOT TABLE (per-weapon chances) ---
+    function buildLootTable() {
+      if (!lootTableEl) return;
+
+      const totalRarityWeight = TOTAL_RARITY_WEIGHT;
+      let lines = [];
+
+      RARITIES.forEach(r => {
+        const rarityChance = (r.prob / totalRarityWeight) * 100;
+        const weaponsPerRarity = r.weapons.length || 1;
+        const anyTierPerWeapon = rarityChance / weaponsPerRarity;
+
+        lines.push(`${r.name} (${rarityChance.toFixed(3)}% total):`);
+
+        // Per-weapon overall chance (any tier)
+        r.weapons.forEach(w => {
+          lines.push(`  ${w}: ${anyTierPerWeapon.toFixed(4)}% (any tier)`);
+        });
+
+        // Tier breakdown per weapon
+        const tiers = r.tiers || {};
+        const tierTotal = Object.values(tiers).reduce((a, b) => a + b, 0) || 1;
+        lines.push(`  Tier breakdown per weapon:`);
+
+        Object.entries(tiers).forEach(([tierKey, weight]) => {
+          const tierShare = weight / tierTotal;
+          const tierChancePerWeapon = anyTierPerWeapon * tierShare;
+          lines.push(`    ${tierKey}: ${tierChancePerWeapon.toFixed(4)}%`);
+        });
+
+        lines.push("");
+      });
+
+      lootTableEl.textContent = lines.join("\n");
     }
 
     // --- CHARACTER CREATION HELPERS ---
@@ -1445,8 +1518,12 @@
 
     // --- GACHA BATCH ---
     function runPullBatch(count) {
+      count = Math.floor(Number(count) || 0);
+
       if (count < 0 || count > 3000) {
-        appendLog(`Pull count must be between 0 and 3000. You entered: ${count}`);
+        const msg = `Pull count must be between 0 and 3000. You entered: ${count}`;
+        appendLog(msg);
+        openGachaModal(msg);
         return;
       }
 
@@ -1456,8 +1533,9 @@
       const cost = tens * TEN_ROLL_COST + singles * SINGLE_ROLL_COST;
 
       if (cost > emeralds) {
-        appendLog(`Not enough Emeralds. You need ${cost}, but only have ${emeralds}.`);
-        openGachaModal(`Not enough Emeralds. You need ${cost}, but only have ${emeralds}.`);
+        const msg = `Not enough Emeralds. You need ${cost}, but only have ${emeralds}.`;
+        appendLog(msg);
+        openGachaModal(msg);
         return;
       }
 
@@ -1479,6 +1557,7 @@
       });
 
       let ancientHitThisBatch = 0;
+      const detailedMap = {}; // key => count
 
       for (let i = 0; i < count; i++) {
         const rarity = pickRarity();
@@ -1501,6 +1580,9 @@
         }
 
         addWeaponToInventory(rarity, weaponName, tier);
+
+        const label = `${rarity.name} ${tier} - ${weaponName}`;
+        detailedMap[label] = (detailedMap[label] || 0) + 1;
       }
 
       let msg = "";
@@ -1527,6 +1609,15 @@
         msg += `You pulled Ancient ${ancientHitThisBatch} time(s) in this batch.\n`;
       } else {
         msg += `\nNo Ancient hit in this batch.\n`;
+      }
+
+      const detailedEntries = Object.entries(detailedMap);
+      if (detailedEntries.length > 0) {
+        msg += `\nDetailed pulls (unique weapon + tier):\n`;
+        detailedEntries.sort((a, b) => a[0].localeCompare(b[0]));
+        detailedEntries.forEach(([label, c]) => {
+          msg += `  ${label}${c > 1 ? " x" + c : ""}\n`;
+        });
       }
 
       msg += `\nSession totals:\n`;
@@ -1632,7 +1723,6 @@
         character.className = meta.className || "Shadow Seeker";
         character.customStats = meta.stats || { atk: 0, def: 0, mag: 0, spd: 0 };
         const s = character.customStats;
-        // Map stats into base stats (keeps overall logic same, just flavored)
         character.baseAttack = 10 + (s.atk * 2) + (s.mag * 1);
         character.baseHP = 100 + (s.def * 12);
       }
@@ -1700,7 +1790,6 @@
     });
 
     maxRollBtn.addEventListener('click', () => {
-      // Calculate maximum possible pulls with current emeralds using 10x and 1x pricing
       if (emeralds < SINGLE_ROLL_COST && emeralds < TEN_ROLL_COST) {
         const msg = 'Not enough Emeralds for any summon.';
         appendLog(msg);
@@ -1741,6 +1830,14 @@
     });
     rollSettingsClose.addEventListener('click', () => {
       rollSettingsModal.style.display = 'none';
+    });
+
+    // Loot drop info button: toggle details
+    lootInfoBtn.addEventListener('click', () => {
+      lootTableContainer.open = !lootTableContainer.open;
+      if (lootTableContainer.open) {
+        lootTableContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     });
 
     backpackBtn.addEventListener('click', () => {
@@ -1840,6 +1937,7 @@
     renderCharStats();
     buildSessionReport();
     updateLeaderboard();
+    buildLootTable();
     appendLog('Ready! Open "Summon Weapons" to pull, then fight in the Combat Simulator.');
     updateCharPreview();
 
