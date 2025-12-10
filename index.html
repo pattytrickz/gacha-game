@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Maple-Style Gacha RPG Simulator</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+      padding: 20px;
+    }
+    h1 {
+      color: #facc15;
+      margin-bottom: 8px;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    .card {
+      background: #0f172a;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    label {
+      display: block;
+      margin-top: 8px;
+      font-size: 0.9rem;
+    }
+    input, select {
+      margin-top: 4px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #4b5563;
+      background: #020617;
+      color: #e5e7eb;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      margin-right: 8px;
+      margin-top: 10px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.primary {
+      background: #2563eb;
+      color: white;
+    }
+    button.secondary {
+      background: #4b5563;
+      color: white;
+    }
+    button.danger {
+      background: #b91c1c;
+      color: white;
+    }
+    pre {
+      background: #020617;
+      padding: 10px;
+      border-radius: 6px;
+      max-height: 260px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+    }
+    .stat-label {
+      color: #9ca3af;
+    }
+
+    /* Rarity text colors */
+    .rarity-normal { color: #9ca3af; }
+    .rarity-rare { color: #3b82f6; }
+    .rarity-epic { color: #a855f7; }
+    .rarity-unique { color: #f97316; }
+    .rarity-legendary { color: #22c55e; }
+    .rarity-mystic { color: #ef4444; }
+    .rarity-ancient {
+      color: #ec4899;
+      font-weight: bold;
+      text-shadow: 0 0 6px rgba(236, 72, 153, 0.8);
+    }
+
+    .xp-bar {
+      font-family: monospace;
+      margin-top: 6px;
+    }
+
+    /* Tiny 8-bit style weapon "sprites" */
+    .weapon-sprite {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 4px;
+      border-radius: 3px;
+      image-rendering: pixelated;
+      border: 1px solid rgba(0,0,0,0.4);
+    }
+    /* Normal weapons */
+    .weapon-plastic-sword { background: #e5e7eb; }
+    .weapon-wooden-sword { background: #92400e; }
+    .weapon-throwing-steel-axe { background: #9ca3af; }
+    .weapon-double-steel-axe { background: #6b7280; }
+    .weapon-pick-axe { background: #4b5563; }
+    .weapon-shovel { background: #9f1239; }
+    .weapon-plunger { background: #b91c1c; }
+    .weapon-steel-pipe { background: #6b7280; }
+
+    /* Rare */
+    .weapon-ninja-sword { background: #1d4ed8; }
+    .weapon-katana { background: #1e3a8a; }
+    .weapon-sledge-hammer { background: #78350f; }
+    .weapon-heavy-spear { background: #0f766e; }
+    .weapon-shuriken { background: #64748b; }
+    .weapon-nail-bat { background: #7f1d1d; }
+
+    /* Epic */
+    .weapon-golden-bat { background: #facc15; }
+    .weapon-double-edge-sword { background: #a855f7; }
+    .weapon-javelin { background: #22c55e; }
+    .weapon-chakram { background: #e879f9; }
+    .weapon-bb-gun { background: #4b5563; }
+
+    /* Unique */
+    .weapon-glock { background: #111827; }
+    .weapon-black-katana { background: #020617; }
+    .weapon-brass-knuckles { background: #f97316; }
+    .weapon-wakizashi { background: #2563eb; }
+
+    /* Legendary */
+    .weapon-ak-47 { background: #b91c1c; }
+    .weapon-mp5 { background: #15803d; }
+    .weapon-pump-shotgun { background: #7c2d12; }
+    .weapon-double-barrel-shotgun { background: #f97316; }
+    .weapon-baretta { background: #0369a1; }
+
+    /* Mystic */
+    .weapon-m4a1 { background: #22c55e; }
+    .weapon-butterfly-knife { background: #fde047; }
+    .weapon-red-katana { background: #dc2626; }
+    .weapon-blue-katana { background: #2563eb; }
+
+    /* Ancient */
+    .weapon-blue-gem-karambit {
+      background: linear-gradient(135deg, #22d3ee, #6366f1);
+      border-color: #38bdf8;
+    }
+
+    .leaderboard-row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Modal styles */
+    #gachaModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+    }
+    #gachaModalBackdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+    }
+    #gachaModalContent {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #020617;
+      border-radius: 12px;
+      padding: 16px 16px 12px;
+      width: min(700px, 95vw);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+      border: 1px solid #334155;
+    }
+    #gachaModalHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    #gachaModalHeader h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: #facc15;
+    }
+    #gachaModalClose {
+      background: transparent;
+      color: #9ca3af;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    #gachaModalClose:hover {
+      background: #111827;
+      color: #e5e7eb;
+    }
+    #gachaModalBody {
+      max-height: 360px;
+      overflow-y: auto;
+      background: #020617;
+      border-radius: 8px;
+      padding: 8px;
+      border: 1px solid #1f2937;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Maple-Style Gacha RPG Simulator</h1>
+  <p class="stat-label">
+    Gacha rates: Normal 39.387%, Rare 39.387%, Epic 7.1%, Unique 3.3%, Legendary 0.4%, Mystic 0.11%, Ancient 0.003%
+  </p>
+
+  <!-- Modal for latest gacha result -->
+  <div id="gachaModal">
+    <div id="gachaModalBackdrop"></div>
+    <div id="gachaModalContent">
+      <div id="gachaModalHeader">
+        <h2>Gacha Result</h2>
+        <button id="gachaModalClose" title="Close">✕</button>
+      </div>
+      <div id="gachaModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Character & global controls -->
+  <div class="card">
+    <h2>Character & Game Controls</h2>
+    <label>
+      Character Name:
+      <input id="charNameInput" type="text" placeholder="Your name" value="Hero">
+    </label>
+    <div style="margin-top:8px;">
+      <button class="primary" id="newGameBtn">New Game</button>
+      <button class="secondary" id="saveBtn">Save Progress</button>
+    </div>
+    <div style="margin-top:8px;">
+      <span class="stat-label">Emeralds:</span> <span id="emeraldsDisplay">0</span>
+    </div>
+    <small class="stat-label">
+      New game starts with 1000 Emeralds.
+      1x roll = 5 Emeralds · 10x roll = 30 Emeralds (mixed amounts auto-calc).
+    </small>
+  </div>
+
+  <!-- Gacha controls -->
+  <div class="card">
+    <h2>Roll Settings</h2>
+    <label>
+      Number of pulls (this action):
+      <input id="pullsInput" type="number" min="0" max="3000" value="10">
+    </label>
+    <small class="stat-label">
+      Cost: singles = 5 Emeralds each, 10-pulls = 30 Emeralds.<br>
+      Example: 23 pulls = 2×10 (60) + 3×5 (15) = 75 Emeralds.
+    </small>
+    <div>
+      <button class="primary" id="runBtn">Run Pulls</button>
+      <button class="secondary" id="rerollBtn">Reroll Same</button>
+      <button class="danger" id="resetGachaBtn">Reset Gacha Stats</button>
+    </div>
+  </div>
+
+  <!-- Gacha session stats -->
+  <div class="card">
+    <h2>Gacha Session Stats</h2>
+    <div><span class="stat-label">Total pulls:</span> <span id="totalPulls">0</span></div>
+    <div><span class="stat-label">Total Ancient hits:</span> <span id="totalAncient">0</span></div>
+    <div><span class="stat-label">Pulls since last Ancient:</span> <span id="sinceAncient">0</span></div>
+  </div>
+
+  <!-- Inventory & weapon management -->
+  <div class="card">
+    <h2>Inventory & Weapon Management</h2>
+    <div id="equippedInfo" class="stat-label">No weapon equipped.</div>
+
+    <label>
+      Filter inventory by rarity:
+      <select id="rarityFilter">
+        <option value="all">All</option>
+        <option value="normal">Normal</option>
+        <option value="rare">Rare</option>
+        <option value="epic">Epic</option>
+        <option value="unique">Unique</option>
+        <option value="legendary">Legendary</option>
+        <option value="mystic">Mystic</option>
+        <option value="ancient">Ancient</option>
+      </select>
+    </label>
+
+    <label>
+      Choose weapon to equip / awaken (filtered):
+      <select id="weaponSelect"></select>
+    </label>
+    <button class="primary" id="equipBtn">Equip Weapon</button>
+    <button class="secondary" id="awakenBtn">Awaken (use duplicate)</button>
+    <pre id="inventoryView"></pre>
+  </div>
+
+  <!-- Combat simulator -->
+  <div class="card">
+    <h2>Text-Based Combat Simulator</h2>
+    <div id="charStats"></div>
+    <div id="stageInfo"></div>
+    <button class="primary" id="fightBtn">Fight Encounter</button>
+    <pre id="combatLog"></pre>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="card">
+    <h2>Leaderboard (Furthest Stage)</h2>
+    <div style="margin-bottom:8px;">
+      <button class="danger" id="clearLeaderboardBtn">Clear Leaderboard</button>
+    </div>
+    <pre id="leaderboardView"></pre>
+  </div>
+
+  <!-- Last gacha batch + session report -->
+  <div class="card">
+    <h2>Last Gacha Action Result</h2>
+    <pre id="log"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Session Report & Percentiles</h2>
+    <pre id="sessionReport"></pre>
+  </div>
+
+  <script>
+    // --- CURRENCY CONFIG ---
+    const EMERALDS_START = 1000;
+    const SINGLE_ROLL_COST = 5;
+    const TEN_ROLL_COST = 30;
+
+    function rollInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // Ancient theoretical rate
+    const ANCIENT_RATE_PERCENT = 0.003;
+    const ANCIENT_P = ANCIENT_RATE_PERCENT / 100.0;
+
+    // Rarity & tiers; weapons arrays per rarity
+    const RARITIES = [
+      {
+        key: "normal",
+        name: "Normal",
+        prob: 39.387,
+        tiers: { T4: 40, T3: 30, T2: 20, T1: 10 },
+        weapons: [
+          "Plastic Sword",
+          "Wooden Sword",
+          "Throwing Steel Axe",
+          "Double Steel Axe",
+          "Pick Axe",
+          "Shovel",
+          "Plunger",
+          "Steel Pipe"
+        ]
+      },
+      {
+        key: "rare",
+        name: "Rare",
+        prob: 39.387,
+        tiers: { T4: 40, T3: 30, T2: 20, T1: 10 },
+        weapons: [
+          "Ninja Sword",
+          "Katana",
+          "Sledge Hammer",
+          "Heavy Spear",
+          "Shuriken",
+          "Nail Bat"
+        ]
+      },
+      {
+        key: "epic",
+        name: "Epic",
+        prob: 7.1,
+        tiers: { T4: 40, T3: 30, T2: 20, T1: 10 },
+        weapons: [
+          "Golden Bat",
+          "Double Edge Sword",
+          "Javelin",
+          "Chakram",
+          "BB Gun"
+        ]
+      },
+      {
+        key: "unique",
+        name: "Unique",
+        prob: 3.3,
+        tiers: { T4: 40, T3: 30, T2: 20, T1: 10 },
+        weapons: [
+          "Glock",
+          "Black Katana",
+          "Brass Knuckles",
+          "Wakizashi"
+        ]
+      },
+      {
+        key: "legendary",
+        name: "Legendary",
+        prob: 0.4,
+        tiers: { T4: 40, T3: 33, T2: 20, T1: 7 },
+        weapons: [
+          "AK-47",
+          "MP5",
+          "Pump Shotgun",
+          "Double Barrel Shotgun",
+          "Baretta"
+        ]
+      },
+      {
+        key: "mystic",
+        name: "Mystic",
+        prob: 0.11,
+        tiers: { T4: 50, T3: 30, T2: 13, T1: 7 },
+        weapons: [
+          "M4A1",
+          "Butterfly Knife",
+          "Red Katana",
+          "Blue Katana"
+        ]
+      },
+      {
+        key: "ancient",
+        name: "Ancient",
+        prob: 0.003,
+        tiers: { T4: 100 },
+        weapons: [
+          "Blue Gem Karambit"
+        ]
+      }
+    ];
+
+    const TOTAL_RARITY_WEIGHT = RARITIES.reduce((sum, r) => sum + r.prob, 0);
+    const RARITY_ORDER = ["normal","rare","epic","unique","legendary","mystic","ancient"];
+    const TIER_ORDER = ["T4","T3","T2","T1"];
+
+    // --- STATE ---
+    let emeralds = EMERALDS_START;
+
+    let totalPulls = 0;
+    let totalAncientHits = 0;
+    let pullsSinceLastAncient = 0;
+
+    const sessionRarityCounts = {};
+    const sessionTierCounts = {};
+
+    RARITIES.forEach(r => {
+      sessionRarityCounts[r.key] = 0;
+      sessionTierCounts[r.key] = { T4: 0, T3: 0, T2: 0, T1: 0 };
+    });
+
+    let lastPullCount = 10;
+
+    // Inventory: key = rarityKey + '|' + weaponName + '|' + tier
+    let inventory = {};
+    let equippedKey = null;
+
+    let characterName = "Hero";
+
+    // Character
+    let character = {
+      level: 1,
+      exp: 0,
+      expToNext: 100,
+      baseAttack: 10,
+      baseHP: 100
+    };
+    let stage = 1;
+
+    // Leaderboard: array of { name, bestStage }
+    let leaderboard = [];
+
+    // --- DOM ELEMENTS ---
+    const charNameInput   = document.getElementById('charNameInput');
+    const emeraldsDisplay = document.getElementById('emeraldsDisplay');
+
+    const newGameBtn      = document.getElementById('newGameBtn');
+    const saveBtn         = document.getElementById('saveBtn');
+
+    const pullsInput      = document.getElementById('pullsInput');
+    const totalPullsEl    = document.getElementById('totalPulls');
+    const totalAncientEl  = document.getElementById('totalAncient');
+    const sinceAncientEl  = document.getElementById('sinceAncient');
+
+    const runBtn          = document.getElementById('runBtn');
+    const rerollBtn       = document.getElementById('rerollBtn');
+    const resetGachaBtn   = document.getElementById('resetGachaBtn');
+
+    const rarityFilter    = document.getElementById('rarityFilter');
+    const weaponSelect    = document.getElementById('weaponSelect');
+    const equipBtn        = document.getElementById('equipBtn');
+    const awakenBtn       = document.getElementById('awakenBtn');
+    const inventoryView   = document.getElementById('inventoryView');
+    const equippedInfo    = document.getElementById('equippedInfo');
+
+    const charStatsEl     = document.getElementById('charStats');
+    const stageInfoEl     = document.getElementById('stageInfo');
+    const fightBtn        = document.getElementById('fightBtn');
+    const combatLogEl     = document.getElementById('combatLog');
+
+    const leaderboardView = document.getElementById('leaderboardView');
+    const clearLeaderboardBtn = document.getElementById('clearLeaderboardBtn');
+
+    const logEl           = document.getElementById('log');
+    const sessionReportEl = document.getElementById('sessionReport');
+
+    // Modal elements
+    const gachaModal          = document.getElementById('gachaModal');
+    const gachaModalBackdrop  = document.getElementById('gachaModalBackdrop');
+    const gachaModalClose     = document.getElementById('gachaModalClose');
+    const gachaModalBody      = document.getElementById('gachaModalBody');
+
+    function openGachaModal(contentHtml) {
+      gachaModalBody.innerHTML = contentHtml;
+      gachaModal.style.display = 'block';
+    }
+
+    function closeGachaModal() {
+      gachaModal.style.display = 'none';
+    }
+
+    gachaModalClose.addEventListener('click', closeGachaModal);
+    gachaModalBackdrop.addEventListener('click', closeGachaModal);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && gachaModal.style.display === 'block') {
+        closeGachaModal();
+      }
+    });
+
+    function setEmeraldsDisplay() {
+      emeraldsDisplay.textContent = emeralds;
+    }
+
+    function appendLog(html) {
+      logEl.innerHTML = html;
+    }
+
+    function updateGachaStatsUI() {
+      totalPullsEl.textContent = totalPulls;
+      totalAncientEl.textContent = totalAncientHits;
+      sinceAncientEl.textContent = pullsSinceLastAncient;
+    }
+
+    // --- GACHA HELPERS ---
+    function pickRarity() {
+      const roll = Math.random() * TOTAL_RARITY_WEIGHT;
+      let acc = 0;
+      for (const r of RARITIES) {
+        acc += r.prob;
+        if (roll < acc) return r;
+      }
+      return RARITIES[RARITIES.length - 1];
+    }
+
+    function pickTier(rarity) {
+      const tiers = rarity.tiers;
+      const entries = Object.entries(tiers);
+      const totalTierWeight = entries.reduce((s, [, p]) => s + p, 0);
+      const roll = Math.random() * totalTierWeight;
+      let acc = 0;
+      for (const [tier, p] of entries) {
+        acc += p;
+        if (roll < acc) return tier;
+      }
+      return entries[entries.length - 1][0];
+    }
+
+    function pickWeaponName(rarity) {
+      const list = rarity.weapons;
+      const idx = Math.floor(Math.random() * list.length);
+      return list[idx];
+    }
+
+    function pullsForPercentile(p, percentile) {
+      if (percentile <= 0 || percentile >= 1) return 0;
+      const num = Math.log(1 - percentile);
+      const denom = Math.log(1 - p);
+      if (denom === 0) return 0;
+      return Math.ceil(num / denom);
+    }
+
+    // --- INVENTORY ---
+    function slugifyWeaponName(name) {
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    }
+
+    function weaponKey(rarityKey, weaponName, tier) {
+      return `${rarityKey}|${weaponName}|${tier}`;
+    }
+
+    function addWeaponToInventory(rarity, weaponName, tier) {
+      const key = weaponKey(rarity.key, weaponName, tier);
+      if (!inventory[key]) {
+        inventory[key] = {
+          key,
+          rarityKey: rarity.key,
+          rarityName: rarity.name,
+          weaponName,
+          tier,
+          count: 1,
+          awakenLevel: 0
+        };
+      } else {
+        inventory[key].count++;
+      }
+    }
+
+    function computeWeaponAttack(weapon) {
+      const rarityFactor = {
+        normal: 1.0,
+        rare: 1.2,
+        epic: 1.5,
+        unique: 1.8,
+        legendary: 2.2,
+        mystic: 3.0,
+        ancient: 5.0
+      };
+      const tierFactor = {
+        T4: 1.0,
+        T3: 0.9,
+        T2: 0.8,
+        T1: 0.7
+      };
+      const rFact = rarityFactor[weapon.rarityKey] || 1.0;
+      const tFact = tierFactor[weapon.tier] || 1.0;
+      const awakenBonus = 1 + weapon.awakenLevel * 0.1;
+      const base = character.baseAttack + character.level * 2;
+      return base * rFact * tFact * awakenBonus;
+    }
+
+    function updateInventoryUI() {
+      const filter = rarityFilter.value; // 'all' or rarity key
+      let items = Object.values(inventory);
+
+      if (filter !== "all") {
+        items = items.filter(w => w.rarityKey === filter);
+      }
+
+      // Sort by rarity -> tier order -> weapon name
+      items.sort((a, b) => {
+        if (a.rarityKey !== b.rarityKey) {
+          return RARITY_ORDER.indexOf(a.rarityKey) - RARITY_ORDER.indexOf(b.rarityKey);
+        }
+        if (a.tier !== b.tier) {
+          return TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier);
+        }
+        return a.weaponName.localeCompare(b.weaponName);
+      });
+
+      // Update select
+      weaponSelect.innerHTML = "";
+      items.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.key;
+        opt.textContent =
+          `${w.rarityName} ${w.tier} - ${w.weaponName} | Copies: ${w.count}, Awaken: +${w.awakenLevel}`;
+        weaponSelect.appendChild(opt);
+      });
+
+      // Update inventory text view
+      let invHTML = "";
+      if (items.length === 0) {
+        invHTML = filter === "all"
+          ? "No weapons obtained yet. Roll the gacha to get some!"
+          : `No weapons of rarity "${filter}" yet.`;
+      } else {
+        invHTML += "=== Inventory ===\n";
+        items.forEach(w => {
+          const slug = slugifyWeaponName(w.weaponName);
+          const spriteClass = `weapon-${slug}`;
+          invHTML += `<span class="weapon-sprite ${spriteClass}"></span>`;
+          invHTML += `<span class="rarity-${w.rarityKey}">${w.rarityName}</span> `;
+          invHTML += `${w.tier} | ${w.weaponName} | Copies: ${w.count} | Awaken: +${w.awakenLevel}\n`;
+        });
+      }
+      inventoryView.innerHTML = invHTML;
+
+      // Equipped info (unchanged)
+      if (equippedKey && inventory[equippedKey]) {
+        const w = inventory[equippedKey];
+        const atk = computeWeaponAttack(w).toFixed(1);
+        const slug = slugifyWeaponName(w.weaponName);
+        const spriteClass = `weapon-${slug}`;
+        equippedInfo.innerHTML =
+          `Equipped: <span class="weapon-sprite ${spriteClass}"></span>` +
+          `<span class="rarity-${w.rarityKey}">${w.rarityName} ${w.tier}</span> ` +
+          `| ${w.weaponName} | Copies: ${w.count} | Awaken: +${w.awakenLevel} | ATK: ${atk}`;
+      } else {
+        equippedInfo.textContent = "No weapon equipped.";
+      }
+    }
+
+    // --- CHARACTER / COMBAT ---
+    function renderCharStats() {
+      const hp = character.baseHP + character.level * 20;
+      let weaponAttack = 0;
+      if (equippedKey && inventory[equippedKey]) {
+        weaponAttack = computeWeaponAttack(inventory[equippedKey]);
+      }
+      const totalAtk = weaponAttack || (character.baseAttack + character.level * 2);
+
+      const expRatio = character.exp / character.expToNext;
+      const barLen = 20;
+      const filled = Math.round(expRatio * barLen);
+      const bar = "[" + "=".repeat(filled) + ".".repeat(barLen - filled) + "]";
+
+      let text = "";
+      text += `Name: ${characterName}\n`;
+      text += `Level ${character.level}\n`;
+      text += `HP: ${hp}\n`;
+      text += `Attack: ${totalAtk.toFixed(1)}\n`;
+      text += `EXP: ${character.exp} / ${character.expToNext}\n`;
+      text += `XP: ${bar}\n`;
+
+      charStatsEl.textContent = text;
+      stageInfoEl.textContent = `Current Stage: ${stage}`;
+    }
+
+    function gainExp(amount) {
+      character.exp += amount;
+      while (character.exp >= character.expToNext) {
+        character.exp -= character.expToNext;
+        character.level++;
+        character.expToNext = Math.round(character.expToNext * 1.3);
+      }
+    }
+
+    function updateLeaderboard() {
+      if (characterName && stage > 0) {
+        let entry = leaderboard.find(e => e.name === characterName);
+        if (!entry) {
+          leaderboard.push({ name: characterName, bestStage: stage });
+        } else if (stage > entry.bestStage) {
+          entry.bestStage = stage;
+        }
+      }
+
+      leaderboard.sort((a, b) => b.bestStage - a.bestStage);
+
+      let text = "";
+      if (leaderboard.length === 0) {
+        text = "No runs recorded yet.";
+      } else {
+        text += "Name".padEnd(18) + "Best Stage\n";
+        text += "------------------------------\n";
+        leaderboard.forEach(e => {
+          text += `${e.name.padEnd(18)}${e.bestStage}\n`;
+        });
+      }
+      leaderboardView.textContent = text;
+    }
+
+    function fightEncounter() {
+      if (!equippedKey || !inventory[equippedKey]) {
+        combatLogEl.textContent = "You have no weapon equipped. Equip a weapon first.";
+        return;
+      }
+
+      const weapon = inventory[equippedKey];
+      let playerHP = character.baseHP + character.level * 20;
+      const playerATK = computeWeaponAttack(weapon);
+
+      const isBoss = Math.random() < 0.25;
+      const baseHp = 60 + stage * 25;
+      const baseAtk = 8 + stage * 3;
+      let monsterHP = baseHp * (isBoss ? 2.0 : 1.0);
+      let monsterATK = baseAtk * (isBoss ? 2.0 : 1.2);
+
+      let log = `Stage ${stage} - ${isBoss ? "BOSS" : "Monster"} encounter!\n`;
+      log += `${characterName}'s ATK: ${playerATK.toFixed(1)} | HP: ${playerHP}\n`;
+      log += `Enemy ATK: ${monsterATK.toFixed(1)} | HP: ${monsterHP.toFixed(0)}\n`;
+
+      let turn = 1;
+      while (playerHP > 0 && monsterHP > 0 && turn < 50) {
+        log += `\nTurn ${turn}\n`;
+        const dmg = Math.round(playerATK * (0.8 + Math.random() * 0.4));
+        monsterHP -= dmg;
+        log += `You hit for ${dmg}. Enemy HP: ${Math.max(0, Math.round(monsterHP))}\n`;
+        if (monsterHP <= 0) break;
+
+        const mdmg = Math.round(monsterATK * (0.8 + Math.random() * 0.4));
+        playerHP -= mdmg;
+        log += `Enemy hits you for ${mdmg}. Your HP: ${Math.max(0, Math.round(playerHP))}\n`;
+        turn++;
+      }
+
+      if (playerHP > 0 && monsterHP <= 0) {
+        const expGain = isBoss ? stage * 50 : stage * 15;
+        gainExp(expGain);
+        log += `\nYou defeated the ${isBoss ? "BOSS" : "monster"}! Gained ${expGain} EXP.\n`;
+
+        // Emerald drops
+        let dropChance, minDrop, maxDrop;
+        if (isBoss) {
+          dropChance = rollInt(5, 15) / 100.0;
+          minDrop = 15;
+          maxDrop = 20;
+        } else {
+          dropChance = rollInt(10, 20) / 100.0;
+          minDrop = 1;
+          maxDrop = 5;
+        }
+        if (Math.random() < dropChance) {
+          const amount = rollInt(minDrop, maxDrop);
+          emeralds += amount;
+          log += `You found ${amount} Emeralds!\n`;
+        }
+
+        if (isBoss) {
+          stage++;
+          log += `Stage increased to ${stage}!\n`;
+        }
+      } else {
+        log += `\nYou were defeated... No EXP gained.\n`;
+        if (stage > 1) {
+          stage--;
+          log += `You fall back to Stage ${stage}.\n`;
+        } else {
+          log += `You are already at Stage 1.\n`;
+        }
+      }
+
+      combatLogEl.textContent = log;
+      renderCharStats();
+      setEmeraldsDisplay();
+      updateLeaderboard();
+      saveGame();
+    }
+
+    // --- SESSION REPORT ---
+    function buildSessionReport() {
+      const p50Pulls = pullsForPercentile(ANCIENT_P, 0.5);
+      const p90Pulls = pullsForPercentile(ANCIENT_P, 0.9);
+      const p99Pulls = pullsForPercentile(ANCIENT_P, 0.99);
+
+      // For theory, assume cost = SINGLE_ROLL_COST per pull (no discount)
+      const p50Gems = p50Pulls * SINGLE_ROLL_COST;
+      const p90Gems = p90Pulls * SINGLE_ROLL_COST;
+      const p99Gems = p99Pulls * SINGLE_ROLL_COST;
+
+      let probHit = 0;
+      if (totalPulls > 0) {
+        probHit = 1 - Math.pow(1 - ANCIENT_P, totalPulls);
+      }
+
+      let text = "";
+      text += `=== Theoretical Percentiles (0.003% rate) ===\n`;
+      text += `50% chance to have hit by : ${p50Pulls.toLocaleString()} pulls (${p50Gems.toLocaleString()} Emeralds)\n`;
+      text += `90% chance to have hit by : ${p90Pulls.toLocaleString()} pulls (${p90Gems.toLocaleString()} Emeralds)\n`;
+      text += `99% chance to have hit by : ${p99Pulls.toLocaleString()} pulls (${p99Gems.toLocaleString()} Emeralds)\n\n`;
+
+      text += `=== Your Session vs the Odds ===\n`;
+      text += `You rolled a total of      : ${totalPulls.toLocaleString()} pulls\n`;
+      text += `Your chance to see >=1 hit : ${(probHit * 100).toFixed(2)}%\n`;
+      text += `Total successes this run   : ${totalAncientHits}\n\n`;
+
+      if (totalPulls > 0) {
+        text += `=== Rarity & Tier Distribution (this session) ===\n`;
+        RARITIES.forEach(r => {
+          const rCount = sessionRarityCounts[r.key];
+          const rPct = (rCount / totalPulls) * 100;
+          text += `${r.name} : ${rCount} pulls (${rPct.toFixed(2)}%)\n`;
+          const tiers = sessionTierCounts[r.key];
+          ["T4", "T3", "T2", "T1"].forEach(tk => {
+            if (tiers[tk] && tiers[tk] > 0) {
+              const tCount = tiers[tk];
+              const tPct = (tCount / totalPulls) * 100;
+              text += `  ${tk}: ${tCount} pulls (${tPct.toFixed(2)}%)\n`;
+            }
+          });
+        });
+      }
+
+      sessionReportEl.textContent = text;
+    }
+
+    // --- GACHA BATCH ---
+    function runPullBatch(count) {
+      if (count < 0 || count > 3000) {
+        appendLog(`Pull count must be between 0 and 3000. You entered: ${count}`);
+        return;
+      }
+
+      // Mixed pricing: 10-pulls = 30, singles = 5
+      const tens = Math.floor(count / 10);
+      const singles = count % 10;
+      const cost = tens * TEN_ROLL_COST + singles * SINGLE_ROLL_COST;
+
+      if (cost > emeralds) {
+        appendLog(`Not enough Emeralds. You need ${cost}, but only have ${emeralds}.`);
+        openGachaModal(`Not enough Emeralds. You need ${cost}, but only have ${emeralds}.`);
+        return;
+      }
+
+      if (count === 0) {
+        const msg0 = `You did zero pulls this action.\n\nSession totals remain the same.`;
+        appendLog(msg0);
+        openGachaModal(msg0);
+        buildSessionReport();
+        return;
+      }
+
+      emeralds -= cost;
+
+      let batchRarityCounts = {};
+      let batchTierCounts = {};
+      RARITIES.forEach(r => {
+        batchRarityCounts[r.key] = 0;
+        batchTierCounts[r.key] = { T4: 0, T3: 0, T2: 0, T1: 0 };
+      });
+
+      let ancientHitThisBatch = 0;
+
+      for (let i = 0; i < count; i++) {
+        const rarity = pickRarity();
+        const tier = pickTier(rarity);
+        const weaponName = pickWeaponName(rarity);
+
+        totalPulls++;
+        pullsSinceLastAncient++;
+
+        sessionRarityCounts[rarity.key]++;
+        batchRarityCounts[rarity.key]++;
+
+        sessionTierCounts[rarity.key][tier] = (sessionTierCounts[rarity.key][tier] || 0) + 1;
+        batchTierCounts[rarity.key][tier] = (batchTierCounts[rarity.key][tier] || 0) + 1;
+
+        if (rarity.key === "ancient") {
+          totalAncientHits++;
+          ancientHitThisBatch++;
+          pullsSinceLastAncient = 0;
+        }
+
+        addWeaponToInventory(rarity, weaponName, tier);
+      }
+
+      let msg = "";
+      msg += `Pulled: ${count} time(s)\n`;
+      msg += `Cost: ${cost} Emeralds (tens: ${tens}, singles: ${singles})\n\n`;
+      msg += `Batch results (by rarity & tier):\n`;
+
+      RARITIES.forEach(r => {
+        const rCount = batchRarityCounts[r.key];
+        if (rCount > 0) {
+          msg += `<span class="rarity-${r.key}">- ${r.name}: ${rCount}</span>\n`;
+          const tiers = batchTierCounts[r.key];
+          ["T4", "T3", "T2", "T1"].forEach(tk => {
+            const val = tiers[tk] || 0;
+            if (val > 0) {
+              msg += `    ${tk}: ${val}\n`;
+            }
+          });
+        }
+      });
+
+      if (ancientHitThisBatch > 0) {
+        msg += `\n<span class="rarity-ancient">***** ✨ ANCIENT HIT! ✨ *****</span>\n`;
+        msg += `You pulled Ancient ${ancientHitThisBatch} time(s) in this batch.\n`;
+      } else {
+        msg += `\nNo Ancient hit in this batch.\n`;
+      }
+
+      msg += `\nSession totals:\n`;
+      msg += `  Total pulls: ${totalPulls}\n`;
+      msg += `  Total Ancient hits: ${totalAncientHits}\n`;
+      msg += `  Pulls since last Ancient: ${pullsSinceLastAncient}\n`;
+      msg += `  Emeralds remaining: ${emeralds}\n`;
+
+      appendLog(msg);
+      openGachaModal(msg);
+      setEmeraldsDisplay();
+      updateGachaStatsUI();
+      updateInventoryUI();
+      renderCharStats();
+      buildSessionReport();
+      saveGame();
+    }
+
+    // --- SAVE / LOAD ---
+    function saveGame() {
+      const state = {
+        emeralds,
+        totalPulls,
+        totalAncientHits,
+        pullsSinceLastAncient,
+        sessionRarityCounts,
+        sessionTierCounts,
+        inventory,
+        equippedKey,
+        character,
+        stage,
+        characterName,
+        leaderboard
+      };
+      localStorage.setItem("gachaRPGSave", JSON.stringify(state));
+    }
+
+    function loadGame() {
+      const raw = localStorage.getItem("gachaRPGSave");
+      if (!raw) return;
+      try {
+        const state = JSON.parse(raw);
+        emeralds = state.emeralds ?? EMERALDS_START;
+        totalPulls = state.totalPulls ?? 0;
+        totalAncientHits = state.totalAncientHits ?? 0;
+        pullsSinceLastAncient = state.pullsSinceLastAncient ?? 0;
+
+        if (state.sessionRarityCounts) {
+          Object.keys(sessionRarityCounts).forEach(k => {
+            if (k in state.sessionRarityCounts) {
+              sessionRarityCounts[k] = state.sessionRarityCounts[k];
+            }
+          });
+        }
+        if (state.sessionTierCounts) {
+          Object.keys(sessionTierCounts).forEach(k => {
+            if (k in state.sessionTierCounts) {
+              sessionTierCounts[k] = state.sessionTierCounts[k];
+            }
+          });
+        }
+
+        inventory = state.inventory || {};
+        equippedKey = state.equippedKey || null;
+        character = state.character || character;
+        stage = state.stage ?? 1;
+        characterName = state.characterName || "Hero";
+        leaderboard = state.leaderboard || [];
+      } catch (e) {
+        console.error("Failed to load save:", e);
+      }
+    }
+
+    function newGame() {
+      emeralds = EMERALDS_START;
+      totalPulls = 0;
+      totalAncientHits = 0;
+      pullsSinceLastAncient = 0;
+
+      RARITIES.forEach(r => {
+        sessionRarityCounts[r.key] = 0;
+        sessionTierCounts[r.key] = { T4: 0, T3: 0, T2: 0, T1: 0 };
+      });
+
+      inventory = {};
+      equippedKey = null;
+      character = { level: 1, exp: 0, expToNext: 100, baseAttack: 10, baseHP: 100 };
+      stage = 1;
+
+      appendLog('New game started. You have 1000 Emeralds. Roll and fight!');
+      combatLogEl.textContent = "";
+      buildSessionReport();
+      updateInventoryUI();
+      updateGachaStatsUI();
+      setEmeraldsDisplay();
+      renderCharStats();
+      saveGame();
+    }
+
+    function resetGachaStats() {
+      totalPulls = 0;
+      totalAncientHits = 0;
+      pullsSinceLastAncient = 0;
+      RARITIES.forEach(r => {
+        sessionRarityCounts[r.key] = 0;
+        sessionTierCounts[r.key] = { T4: 0, T3: 0, T2: 0, T1: 0 };
+      });
+      updateGachaStatsUI();
+      buildSessionReport();
+      appendLog("Gacha stats reset (Emeralds, inventory, stage, etc. unchanged).");
+      saveGame();
+    }
+
+    function clearLeaderboard() {
+      leaderboard = [];
+      updateLeaderboard();
+      saveGame();
+    }
+
+    // --- EVENTS ---
+    runBtn.addEventListener('click', () => {
+      const pullsVal = parseInt(pullsInput.value, 10);
+      if (isNaN(pullsVal)) {
+        const msg = 'Please enter a valid number of pulls (0–3000).';
+        appendLog(msg);
+        openGachaModal(msg);
+        return;
+      }
+      lastPullCount = pullsVal;
+      runPullBatch(pullsVal);
+    });
+
+    rerollBtn.addEventListener('click', () => {
+      runPullBatch(lastPullCount);
+    });
+
+    resetGachaBtn.addEventListener('click', () => {
+      resetGachaStats();
+    });
+
+    newGameBtn.addEventListener('click', () => {
+      newGame();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      saveGame();
+      appendLog("Progress saved.");
+      openGachaModal("Progress saved.");
+    });
+
+    equipBtn.addEventListener('click', () => {
+      const key = weaponSelect.value;
+      if (!key || !inventory[key]) {
+        equippedInfo.textContent = "No weapon selected.";
+        return;
+      }
+      equippedKey = key;
+      updateInventoryUI();
+      renderCharStats();
+      saveGame();
+    });
+
+    awakenBtn.addEventListener('click', () => {
+      const key = weaponSelect.value;
+      if (!key || !inventory[key]) {
+        equippedInfo.textContent = "No weapon selected to awaken.";
+        return;
+      }
+      const w = inventory[key];
+      const required = 2 + w.awakenLevel;
+      if (w.count >= required) {
+        w.count -= (required - 1);
+        w.awakenLevel++;
+        updateInventoryUI();
+        renderCharStats();
+        saveGame();
+      } else {
+        alert(`Not enough duplicates. Need at least ${required} copies (you have ${w.count}).`);
+      }
+    });
+
+    fightBtn.addEventListener('click', () => {
+      fightEncounter();
+    });
+
+    charNameInput.addEventListener('input', () => {
+      const trimmed = charNameInput.value.trim();
+      characterName = trimmed || "Hero";
+      renderCharStats();
+      saveGame();
+    });
+
+    rarityFilter.addEventListener('change', () => {
+      updateInventoryUI();
+    });
+
+    clearLeaderboardBtn.addEventListener('click', () => {
+      clearLeaderboard();
+    });
+
+    // --- INIT ---
+    loadGame();
+    charNameInput.value = characterName;
+    setEmeraldsDisplay();
+    updateGachaStatsUI();
+    updateInventoryUI();
+    renderCharStats();
+    buildSessionReport();
+    updateLeaderboard();
+    appendLog('Ready! Enter how many pulls you want, then click "Run Pulls".');
+  </script>
+</body>
+</html>
